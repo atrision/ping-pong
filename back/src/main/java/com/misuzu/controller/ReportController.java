@@ -19,6 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.annotation.PostConstruct;
@@ -130,6 +132,60 @@ public class ReportController {
             result.put("status", "error");
             result.put("error", e.getMessage());
             return ApiResponse.error(500, "数据库连接失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 保存报告
+     *
+     * @param reportData 报告数据
+     * @return 保存结果
+     */
+    @PostMapping("/save")
+    @Operation(summary = "保存报告")
+    public ResponseEntity<?> saveReport(@RequestBody Object reportData) {
+        try {
+            log.info("收到保存报告请求");
+            Long reportId = reportService.saveReport(reportData);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("code", 200);
+            result.put("message", "报告保存成功");
+            result.put("data", Map.of("id", reportId));
+            
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("保存报告失败: {}", e.getMessage(), e);
+            
+            Map<String, Object> error = new HashMap<>();
+            error.put("code", 500);
+            error.put("message", "保存报告失败: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+    
+    /**
+     * 导出报告为PDF
+     *
+     * @param reportId 报告ID
+     * @return PDF文件
+     */
+    @GetMapping("/export/pdf/{reportId}")
+    @Operation(summary = "导出报告PDF")
+    public ResponseEntity<byte[]> exportReportPdf(@PathVariable Long reportId) {
+        try {
+            log.info("收到导出PDF请求，报告ID: {}", reportId);
+            byte[] pdfContent = reportService.exportReportAsPdf(reportId);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", "report_" + reportId + ".pdf");
+            headers.setContentLength(pdfContent.length);
+            
+            return new ResponseEntity<>(pdfContent, headers, HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("导出PDF失败: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
 

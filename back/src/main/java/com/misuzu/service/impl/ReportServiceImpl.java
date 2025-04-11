@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.HttpClientErrorException;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -22,6 +23,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.Date;
+
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.Font;
+import com.itextpdf.text.FontFactory;
+import com.itextpdf.text.Paragraph;
+import com.itextpdf.text.Element;
+import com.itextpdf.text.Chunk;
+import com.itextpdf.text.pdf.BaseFont;
+import com.itextpdf.text.pdf.PdfWriter;
 
 /**
  * 报告服务实现类
@@ -610,5 +622,139 @@ public class ReportServiceImpl implements ReportService {
         return content.replaceAll("`", "")
                      .replaceAll("\\\\n", "\\n")
                      .replaceAll("\\s+", " ");
+    }
+
+    /**
+     * 保存报告内容到数据库
+     * 
+     * @param reportData 报告数据
+     * @return 保存的报告ID
+     */
+    @Override
+    public Long saveReport(Object reportData) {
+        try {
+            log.info("保存报告数据: {}", objectMapper.writeValueAsString(reportData));
+            
+            // TODO: 实际项目中，这里应该将报告数据保存到数据库
+            // 模拟数据库操作，返回一个随机ID
+            Long reportId = System.currentTimeMillis();
+            log.info("报告保存成功，ID: {}", reportId);
+            
+            return reportId;
+        } catch (Exception e) {
+            log.error("保存报告失败: {}", e.getMessage(), e);
+            throw new RuntimeException("保存报告失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 导出报告为PDF
+     * 
+     * @param reportId 报告ID
+     * @return PDF文件的字节数组
+     */
+    @Override
+    public byte[] exportReportAsPdf(Long reportId) {
+        log.info("开始导出报告PDF，报告ID: {}", reportId);
+        
+        try {
+            // TODO: 在实际项目中，这里应该从数据库获取报告数据
+            // 模拟从数据库获取报告数据
+            ReportModelResponse reportData = getMockReportData(reportId);
+            
+            // 创建PDF文档
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            Document document = new Document();
+            PdfWriter writer = PdfWriter.getInstance(document, baos);
+            document.open();
+            
+            // 添加中文字体支持
+            Font titleFont = FontFactory.getFont("STSong-Light", "UniGB-UCS2-H", BaseFont.NOT_EMBEDDED, 18, Font.BOLD);
+            Font headingFont = FontFactory.getFont("STSong-Light", "UniGB-UCS2-H", BaseFont.NOT_EMBEDDED, 16, Font.BOLD);
+            Font normalFont = FontFactory.getFont("STSong-Light", "UniGB-UCS2-H", BaseFont.NOT_EMBEDDED, 12, Font.NORMAL);
+            
+            // 添加标题
+            Paragraph title = new Paragraph(reportData.getTitle(), titleFont);
+            title.setAlignment(Element.ALIGN_CENTER);
+            document.add(title);
+            document.add(Chunk.NEWLINE);
+            
+            // 添加生成日期
+            Paragraph dateP = new Paragraph("生成日期: " + new Date(), normalFont);
+            dateP.setAlignment(Element.ALIGN_CENTER);
+            document.add(dateP);
+            document.add(Chunk.NEWLINE);
+            
+            // 添加摘要
+            Paragraph summaryTitle = new Paragraph("摘要", headingFont);
+            document.add(summaryTitle);
+            document.add(new Paragraph(reportData.getSummary(), normalFont));
+            document.add(Chunk.NEWLINE);
+            
+            // 添加章节
+            for (ReportModelResponse.Section section : reportData.getSections()) {
+                Paragraph sectionTitle = new Paragraph(section.getTitle(), headingFont);
+                document.add(sectionTitle);
+                document.add(new Paragraph(section.getContent(), normalFont));
+                document.add(Chunk.NEWLINE);
+            }
+            
+            // 添加结论
+            Paragraph conclusionTitle = new Paragraph("结论", headingFont);
+            document.add(conclusionTitle);
+            document.add(new Paragraph(reportData.getConclusion(), normalFont));
+            document.add(Chunk.NEWLINE);
+            
+            // 添加建议
+            Paragraph suggestionsTitle = new Paragraph("训练建议", headingFont);
+            document.add(suggestionsTitle);
+            document.add(new Paragraph(reportData.getSuggestions(), normalFont));
+            
+            // 关闭文档
+            document.close();
+            
+            log.info("PDF导出成功，大小: {} 字节", baos.size());
+            return baos.toByteArray();
+            
+        } catch (Exception e) {
+            log.error("PDF导出失败: {}", e.getMessage(), e);
+            throw new RuntimeException("PDF导出失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取模拟报告数据（实际项目中应从数据库获取）
+     * 
+     * @param reportId 报告ID
+     * @return 报告数据
+     */
+    private ReportModelResponse getMockReportData(Long reportId) {
+        log.info("获取报告数据，ID: {}", reportId);
+        
+        // 创建模拟章节
+        List<ReportModelResponse.Section> sections = new ArrayList<>();
+        sections.add(ReportModelResponse.Section.builder()
+                .title("正手技术分析")
+                .content("正手击球动作规范度提升了15%，力量和速度也有明显提高。击球点位置把握更加准确，但在高速球处理时仍有不稳定情况。建议增加高速球应对训练，提高应变能力。")
+                .build());
+        
+        sections.add(ReportModelResponse.Section.builder()
+                .title("反手技术分析")
+                .content("反手技术相比上月有5%的提升，但仍是相对薄弱环节。反手拉球质量不够稳定，特别是处理旋转球时。建议加强反手基本功训练，增加对不同旋转球的适应性训练。")
+                .build());
+        
+        sections.add(ReportModelResponse.Section.builder()
+                .title("步法移动分析")
+                .content("步法移动速度有所提升，但在快速变向和大范围移动时仍显不足。建议增加专项体能训练和步法训练，提高移动速度和协调性。")
+                .build());
+        
+        // 创建完整报告响应
+        return ReportModelResponse.builder()
+                .title("乒乓球训练分析报告")
+                .summary("本报告基于近期的训练数据和视频分析，对训练效果进行了全面评估，并提出有针对性的训练建议。通过分析发现，技术水平整体呈上升趋势，但各项技术发展不均衡，需要有针对性地加强训练。")
+                .sections(sections)
+                .conclusion("总体而言，训练效果良好，技术水平呈上升趋势。正手技术是最大优势，反手技术和步法移动是需要重点提升的方向。建议保持现有训练强度，并针对薄弱环节进行专项训练。")
+                .suggestions("1. 每周安排2次反手专项训练，重点提高反手稳定性和应对旋转球的能力。\n2. 增加步法训练频率，每次训练前进行15分钟的专项步法练习。\n3. 安排1-2次对抗训练，提高实战应变能力。\n4. 使用视频录制训练过程，进行动作比对和纠正。")
+                .build();
     }
 } 

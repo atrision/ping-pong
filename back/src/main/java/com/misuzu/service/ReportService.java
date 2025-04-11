@@ -15,4 +15,20 @@ public interface ReportService {
      * @return 模型分析生成的报告内容
      */
     ReportModelResponse generateModelAnalysis(ReportModelRequest request);
+    
+    /**
+     * 保存报告内容
+     * 
+     * @param reportData 报告数据
+     * @return 保存的报告ID
+     */
+    Long saveReport(Object reportData);
+    
+    /**
+     * 导出报告为PDF
+     * 
+     * @param reportId 报告ID
+     * @return PDF文件的字节数组
+     */
+    byte[] exportReportAsPdf(Long reportId);
 } 
