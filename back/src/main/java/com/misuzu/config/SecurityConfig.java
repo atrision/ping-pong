@@ -51,7 +51,7 @@ public class SecurityConfig {
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/videos/**").permitAll()
+                        .requestMatchers("/videos/**").permitAll()
                         // 公开端点
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers("/public/**").permitAll()
@@ -60,7 +60,8 @@ public class SecurityConfig {
                         .requestMatchers("/ai-assistant/**").permitAll()
                         // 报告接口
                         .requestMatchers("/report/**").permitAll()
-                        .requestMatchers("/api/report/**").permitAll()
+                        // 调试接口
+                        .requestMatchers("/debug/**").permitAll()
                         // 测试接口
                         .requestMatchers("/test", "/ping", "/api-test", "/simple-test").permitAll()
                         .requestMatchers("/report/test", "/report/ping", "/report/simple-test").permitAll()

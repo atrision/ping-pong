@@ -16,7 +16,7 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping({"/debug", "/api/debug"})
+@RequestMapping("/debug")
 @RequiredArgsConstructor
 public class DebugController {
 

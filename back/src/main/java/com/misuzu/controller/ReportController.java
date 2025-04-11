@@ -49,7 +49,7 @@ public class ReportController {
      * @param request 报告模型请求
      * @return 大模型生成的报告内容
      */
-    @PostMapping({"/model-analysis", "/api/model-analysis", "/v1/model-analysis"})
+    @PostMapping({"/model-analysis", "/v1/model-analysis"})
     @Operation(summary = "获取大模型分析结果")
     public ResponseEntity<?> getModelAnalysis(@RequestBody ReportModelRequest request) {
         try {
