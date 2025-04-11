@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.Date;
+import java.text.SimpleDateFormat;
 
 import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
@@ -34,6 +35,7 @@ import com.itextpdf.text.Element;
 import com.itextpdf.text.Chunk;
 import com.itextpdf.text.pdf.BaseFont;
 import com.itextpdf.text.pdf.PdfWriter;
+import com.itextpdf.text.PageSize;
 
 /**
  * 报告服务实现类
@@ -658,29 +660,38 @@ public class ReportServiceImpl implements ReportService {
         log.info("开始导出报告PDF，报告ID: {}", reportId);
         
         try {
-            // TODO: 在实际项目中，这里应该从数据库获取报告数据
             // 模拟从数据库获取报告数据
             ReportModelResponse reportData = getMockReportData(reportId);
             
             // 创建PDF文档
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            Document document = new Document();
+            Document document = new Document(PageSize.A4, 50, 50, 50, 50);
             PdfWriter writer = PdfWriter.getInstance(document, baos);
             document.open();
             
             // 添加中文字体支持
-            Font titleFont = FontFactory.getFont("STSong-Light", "UniGB-UCS2-H", BaseFont.NOT_EMBEDDED, 18, Font.BOLD);
-            Font headingFont = FontFactory.getFont("STSong-Light", "UniGB-UCS2-H", BaseFont.NOT_EMBEDDED, 16, Font.BOLD);
-            Font normalFont = FontFactory.getFont("STSong-Light", "UniGB-UCS2-H", BaseFont.NOT_EMBEDDED, 12, Font.NORMAL);
+            BaseFont baseFont = null;
+            try {
+                // 尝试使用内置的亚洲字体
+                baseFont = BaseFont.createFont("STSong-Light", "UniGB-UCS2-H", BaseFont.NOT_EMBEDDED);
+            } catch (Exception e) {
+                log.warn("无法加载STSong-Light字体，使用默认字体: {}", e.getMessage());
+                // 使用默认字体
+                baseFont = BaseFont.createFont(BaseFont.HELVETICA, BaseFont.WINANSI, BaseFont.EMBEDDED);
+            }
+            
+            Font titleFont = new Font(baseFont, 18, Font.BOLD);
+            Font headingFont = new Font(baseFont, 16, Font.BOLD);
+            Font normalFont = new Font(baseFont, 12, Font.NORMAL);
             
             // 添加标题
-            Paragraph title = new Paragraph(reportData.getTitle(), titleFont);
+            Paragraph title = new Paragraph(reportData.getTitle() != null ? reportData.getTitle() : "训练分析报告", titleFont);
             title.setAlignment(Element.ALIGN_CENTER);
             document.add(title);
             document.add(Chunk.NEWLINE);
             
             // 添加生成日期
-            Paragraph dateP = new Paragraph("生成日期: " + new Date(), normalFont);
+            Paragraph dateP = new Paragraph("生成日期: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()), normalFont);
             dateP.setAlignment(Element.ALIGN_CENTER);
             document.add(dateP);
             document.add(Chunk.NEWLINE);
@@ -688,33 +699,41 @@ public class ReportServiceImpl implements ReportService {
             // 添加摘要
             Paragraph summaryTitle = new Paragraph("摘要", headingFont);
             document.add(summaryTitle);
-            document.add(new Paragraph(reportData.getSummary(), normalFont));
+            document.add(new Paragraph(reportData.getSummary() != null ? reportData.getSummary() : "本报告包含训练分析结果。", normalFont));
             document.add(Chunk.NEWLINE);
             
             // 添加章节
-            for (ReportModelResponse.Section section : reportData.getSections()) {
-                Paragraph sectionTitle = new Paragraph(section.getTitle(), headingFont);
-                document.add(sectionTitle);
-                document.add(new Paragraph(section.getContent(), normalFont));
+            if (reportData.getSections() != null && !reportData.getSections().isEmpty()) {
+                for (ReportModelResponse.Section section : reportData.getSections()) {
+                    if (section.getTitle() != null && !section.getTitle().trim().isEmpty()) {
+                        Paragraph sectionTitle = new Paragraph(section.getTitle(), headingFont);
+                        document.add(sectionTitle);
+                    }
+                    document.add(new Paragraph(section.getContent() != null ? section.getContent() : "", normalFont));
+                    document.add(Chunk.NEWLINE);
+                }
+            } else {
+                document.add(new Paragraph("没有可用的章节内容", normalFont));
                 document.add(Chunk.NEWLINE);
             }
             
             // 添加结论
             Paragraph conclusionTitle = new Paragraph("结论", headingFont);
             document.add(conclusionTitle);
-            document.add(new Paragraph(reportData.getConclusion(), normalFont));
+            document.add(new Paragraph(reportData.getConclusion() != null ? reportData.getConclusion() : "通过分析，可以看出训练整体效果良好，但仍有提升空间。", normalFont));
             document.add(Chunk.NEWLINE);
             
             // 添加建议
             Paragraph suggestionsTitle = new Paragraph("训练建议", headingFont);
             document.add(suggestionsTitle);
-            document.add(new Paragraph(reportData.getSuggestions(), normalFont));
+            document.add(new Paragraph(reportData.getSuggestions() != null ? reportData.getSuggestions() : "建议加强技术动作的规范性训练，增加实战模拟练习。", normalFont));
             
             // 关闭文档
             document.close();
             
-            log.info("PDF导出成功，大小: {} 字节", baos.size());
-            return baos.toByteArray();
+            byte[] pdfBytes = baos.toByteArray();
+            log.info("PDF导出成功，大小: {} 字节", pdfBytes.length);
+            return pdfBytes;
             
         } catch (Exception e) {
             log.error("PDF导出失败: {}", e.getMessage(), e);

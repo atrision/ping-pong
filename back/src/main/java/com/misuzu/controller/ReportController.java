@@ -177,12 +177,22 @@ public class ReportController {
             log.info("收到导出PDF请求，报告ID: {}", reportId);
             byte[] pdfContent = reportService.exportReportAsPdf(reportId);
             
+            if (pdfContent == null || pdfContent.length == 0) {
+                log.error("PDF内容为空");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+            }
+            
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDispositionFormData("attachment", "report_" + reportId + ".pdf");
+            headers.setCacheControl("no-cache, no-store, must-revalidate");
+            headers.setPragma("no-cache");
+            headers.setExpires(0);
             headers.setContentLength(pdfContent.length);
             
-            return new ResponseEntity<>(pdfContent, headers, HttpStatus.OK);
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(pdfContent);
         } catch (Exception e) {
             log.error("导出PDF失败: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
