@@ -145,7 +145,7 @@ public class ReportController {
     @Operation(summary = "保存报告")
     public ResponseEntity<?> saveReport(@RequestBody Object reportData) {
         try {
-            log.info("收到保存报告请求");
+            log.info("收到保存报告请求，报告数据类型: {}", reportData.getClass().getName());
             Long reportId = reportService.saveReport(reportData);
             
             Map<String, Object> result = new HashMap<>();
@@ -153,6 +153,7 @@ public class ReportController {
             result.put("message", "报告保存成功");
             result.put("data", Map.of("id", reportId));
             
+            log.info("报告保存成功，返回ID: {}", reportId);
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("保存报告失败: {}", e.getMessage(), e);
@@ -181,6 +182,8 @@ public class ReportController {
                 log.error("PDF内容为空");
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
             }
+            
+            log.info("PDF生成成功，大小: {} 字节", pdfContent.length);
             
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);

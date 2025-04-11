@@ -637,11 +637,25 @@ public class ReportServiceImpl implements ReportService {
         try {
             log.info("保存报告数据: {}", objectMapper.writeValueAsString(reportData));
             
-            // TODO: 实际项目中，这里应该将报告数据保存到数据库
-            // 模拟数据库操作，返回一个随机ID
+            // 生成唯一的报告ID
             Long reportId = System.currentTimeMillis();
-            log.info("报告保存成功，ID: {}", reportId);
             
+            // 将对象转换为Map并保存到内存存储中
+            // 实际项目中应该保存到数据库
+            if (reportData instanceof Map) {
+                // 如果已经是Map，直接保存
+                @SuppressWarnings("unchecked")
+                Map<String, Object> reportMap = (Map<String, Object>) reportData;
+                tempReportStorage.put(reportId, reportMap);
+            } else {
+                // 如果不是Map，先转换为JSON再转回Map
+                String jsonData = objectMapper.writeValueAsString(reportData);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> reportMap = objectMapper.readValue(jsonData, Map.class);
+                tempReportStorage.put(reportId, reportMap);
+            }
+            
+            log.info("报告保存成功，ID: {}", reportId);
             return reportId;
         } catch (Exception e) {
             log.error("保存报告失败: {}", e.getMessage(), e);
@@ -660,8 +674,13 @@ public class ReportServiceImpl implements ReportService {
         log.info("开始导出报告PDF，报告ID: {}", reportId);
         
         try {
-            // 模拟从数据库获取报告数据
-            ReportModelResponse reportData = getMockReportData(reportId);
+            // 从保存的报告数据中获取真实内容，而不是使用模拟数据
+            ReportModelResponse reportData = getReportData(reportId);
+            
+            if (reportData == null) {
+                log.warn("找不到报告ID: {}的数据，使用模拟数据", reportId);
+                reportData = getMockReportData(reportId);
+            }
             
             // 创建PDF文档
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -741,6 +760,81 @@ public class ReportServiceImpl implements ReportService {
         }
     }
     
+    /**
+     * 从数据存储中获取报告数据（当前为模拟实现）
+     * 实际项目中，这里应该查询数据库获取真实报告数据
+     * 
+     * @param reportId 报告ID
+     * @return 报告数据，如果不存在则返回null
+     */
+    private ReportModelResponse getReportData(Long reportId) {
+        try {
+            log.info("尝试获取已保存的报告数据，ID: {}", reportId);
+            
+            // TODO: 实际项目中，这里应该查询数据库获取报告数据
+            // 当前使用内存模拟存储，实际项目中应使用数据库查询
+            
+            // 检查是否由saveReport方法保存过的报告
+            Map<String, Object> savedReport = tempReportStorage.get(reportId);
+            if (savedReport != null) {
+                log.info("找到已保存的报告数据");
+                
+                // 转换保存的JSON数据为ReportModelResponse对象
+                return convertMapToReportResponse(savedReport);
+            }
+            
+            return null;
+        } catch (Exception e) {
+            log.error("获取报告数据失败: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+    
+    // 简单的内存存储，用于模拟数据库
+    // 实际项目中应该使用数据库存储
+    private static final Map<Long, Map<String, Object>> tempReportStorage = new HashMap<>();
+    
+    /**
+     * 将Map转换为ReportModelResponse对象
+     * 
+     * @param reportMap 报告数据Map
+     * @return ReportModelResponse对象
+     */
+    @SuppressWarnings("unchecked")
+    private ReportModelResponse convertMapToReportResponse(Map<String, Object> reportMap) {
+        try {
+            String title = (String) reportMap.getOrDefault("title", "训练分析报告");
+            String summary = (String) reportMap.getOrDefault("summary", "");
+            String conclusion = (String) reportMap.getOrDefault("conclusion", "");
+            String suggestions = (String) reportMap.getOrDefault("suggestions", "");
+            
+            List<ReportModelResponse.Section> sections = new ArrayList<>();
+            if (reportMap.containsKey("sections")) {
+                List<Map<String, Object>> sectionMaps = (List<Map<String, Object>>) reportMap.get("sections");
+                for (Map<String, Object> sectionMap : sectionMaps) {
+                    String sectionTitle = (String) sectionMap.getOrDefault("title", "");
+                    String sectionContent = (String) sectionMap.getOrDefault("content", "");
+                    
+                    sections.add(ReportModelResponse.Section.builder()
+                            .title(sectionTitle)
+                            .content(sectionContent)
+                            .build());
+                }
+            }
+            
+            return ReportModelResponse.builder()
+                    .title(title)
+                    .summary(summary)
+                    .sections(sections)
+                    .conclusion(conclusion)
+                    .suggestions(suggestions)
+                    .build();
+        } catch (Exception e) {
+            log.error("转换报告数据失败: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
     /**
      * 获取模拟报告数据（实际项目中应从数据库获取）
      * 
